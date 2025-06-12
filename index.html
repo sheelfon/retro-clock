@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>レトロ時報時計</title>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      font-family: 'VT323', monospace;
+    }
+
+    .clock-container {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2e1f14; /* 濃いブラウン */
+      padding: 16px 32px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      text-align: center;
+      width: max-content;
+    }
+
+    #date {
+      font-size: 28px;
+      color: #00FF88; /* レトログリーン */
+      margin-bottom: 10px;
+      letter-spacing: 1px;
+    }
+
+    #clock {
+      font-size: 60px;
+      font-weight: bold;
+      color: #00FF88;
+      text-shadow: 0 0 4px #00FF88;
+    }
+
+    .jst {
+      font-size: 20px;
+      vertical-align: middle;
+      margin-left: 12px;
+      color: #00FF88;
+      opacity: 0.75;
+    }
+  </style>
+</head>
+<body>
+  <div class="clock-container">
+    <div id="date">読み込み中...</div>
+    <div id="clock">--:--:--</div>
+  </div>
+
+  <script>
+    let offset = 0;
+
+    // JST取得（情報通信研究機構）
+    fetch('https://ntp-a1.nict.go.jp/cgi-bin/json')
+      .then(response => response.json())
+      .then(data => {
+        const jstTime = new Date(data.st * 1000);
+        offset = jstTime - Date.now();
+      })
+      .catch(err => console.error('時刻取得失敗:', err));
+
+    function updateClock() {
+      const now = new Date(Date.now() + offset);
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const w = ['日','月','火','水','木','金','土'][now.getDay()];
+      const h = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+
+      document.getElementById('date').textContent = `${y}年${m}月${d}日（${w}）`;
+      document.getElementById('clock').innerHTML = `${h}:${min}:${s} <span class="jst">JST</span>`;
+
+      // 毎正時に3音鳴らす（ピッ…ピッ…ポーン）
+      if (min === '00' && s === '00') {
+        playChime();
+      }
+    }
+
+    function playBeep(freq = 880, duration = 0.2) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.1, ctx.currentTime); // 音量控えめ
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    }
+
+    function playChime() {
+      playBeep(880, 0.2); // ピッ
+      setTimeout(() => playBeep(880, 0.2), 1000); // ピッ
+      setTimeout(() => playBeep(660, 0.6), 2000); // ポーン
+    }
+
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+</body>
+</html>
