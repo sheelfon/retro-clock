@@ -1,69 +1,69 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>NICT JST Retro Clock</title>
-  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>レトロ時報時計</title>
   <style>
-    html, body {
+    body {
       margin: 0;
       padding: 0;
-      background-color: transparent;
+      background: transparent;
+      font-family: 'Courier New', Courier, monospace;
     }
-    #container {
+
+    .clock-container {
       position: absolute;
-      top: 0;
+      top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      margin-top: 20px;
-      padding: 15px 30px;
+      background: rgba(255, 255, 255, 0.85);
+      padding: 12px 24px;
       border-radius: 16px;
-      background-color: #2a1e16; /* 濃いブラウン */
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      font-family: 'VT323', monospace;
-      color: #98ff98; /* 明るいグリーン（ミント） */
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
       text-align: center;
-      border: 2px solid #3e2d24;
+      width: max-content;
     }
+
     #date {
-      font-size: 28px;
-      margin-bottom: 5px;
+      font-size: 20px;
+      color: #222;
+      margin-bottom: 6px;
       letter-spacing: 1px;
     }
+
     #clock {
-      font-size: 48px;
+      font-size: 40px;
       font-weight: bold;
-      letter-spacing: 2px;
+      color: #111;
     }
-    #clock span.jst {
-      font-size: 20px;
-      margin-left: 10px;
+
+    .jst {
+      font-size: 16px;
       vertical-align: middle;
-      color: #b0ffb0;
+      margin-left: 8px;
+      color: #333;
     }
   </style>
 </head>
 <body>
-  <div id="container">
-    <div id="date">----</div>
-    <div id="clock">--:--:-- <span class="jst">JST</span></div>
+  <div class="clock-container">
+    <div id="date">Loading...</div>
+    <div id="clock">--:--:--</div>
   </div>
 
   <script>
     let offset = 0;
 
-    async function fetchNICTTime() {
-      try {
-        const response = await fetch('https://ntp-a1.nict.go.jp/cgi-bin/json');
-        const data = await response.json();
-        const nictTime = data.t[0] * 1000;
-        const localTime = Date.now();
-        offset = nictTime - localTime;
-      } catch (e) {
-        console.error('NICT時刻取得失敗:', e);
-      }
-    }
+    // JSTの日本標準時を取得してローカル時間との差分を計算
+    fetch('https://ntp-a1.nict.go.jp/cgi-bin/json')
+      .then(response => response.json())
+      .then(data => {
+        const jstTime = new Date(data.st * 1000);
+        offset = jstTime - Date.now();
+      })
+      .catch(err => console.error('時刻取得失敗:', err));
 
+    // 時計表示を更新
     function updateClock() {
       const now = new Date(Date.now() + offset);
       const y = now.getFullYear();
@@ -76,16 +76,38 @@
 
       document.getElementById('date').textContent = `${y}年${m}月${d}日（${dayOfWeek}）`;
       document.getElementById('clock').innerHTML = `${h}:${min}:${s} <span class="jst">JST</span>`;
+
+      if (min === '00' && s === '00') {
+        playChime();
+      }
     }
 
-    async function initClock() {
-      await fetchNICTTime();
-      updateClock();
-      setInterval(updateClock, 1000);
-      setInterval(fetchNICTTime, 5 * 60 * 1000);
+    // ピッ音生成
+    function playBeep(freq = 880, duration = 0.2) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
     }
 
-    initClock();
+    // ピッ…ピッ…ポーンの3音時報
+    function playChime() {
+      playBeep(880, 0.2);               // ピッ
+      setTimeout(() => playBeep(880, 0.2), 1000); // ピッ
+      setTimeout(() => playBeep(660, 0.6), 2000); // ポーン
+    }
+
+    setInterval(updateClock, 1000);
+    updateClock(); // 初回即実行
   </script>
 </body>
 </html>
