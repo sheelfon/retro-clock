@@ -79,7 +79,7 @@
       document.getElementById('date').textContent = `${y}年${m}月${d}日（${w}）`;
       document.getElementById('clock').innerHTML = `${h}:${min}:${s} <span class="jst">JST</span>`;
 
-      if (min === '60' && s === '58') {
+      if (min === '00' && s === '58') {
         // ピッ→ピッ→ポーンがちょうど00:00:00になるよう逆算（3秒前に開始）
         scheduleChime();
       }
